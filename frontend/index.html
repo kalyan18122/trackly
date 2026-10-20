@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trackly: Local Delivery Management</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef3f7;--ink:#10243a;--mute:#5a6e82;--card:#fff;--line:#d3dde7;--sig:#ffc233;--ok:#1f9d6b;--bad:#d6443a;--route:#c3d1de}
+@media (prefers-color-scheme:dark){:root{--bg:#0c1824;--ink:#e8eff6;--mute:#8da2b6;--card:#132436;--line:#24394e;--route:#2c445b}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:400 16px/1.5 "Bricolage Grotesque",system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:18px 16px 48px}
+header{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:12px;margin-bottom:22px}
+.logo{font-weight:800;font-size:22px;letter-spacing:-.02em;display:flex;gap:8px;align-items:center}
+.logo i{width:22px;height:22px;background:var(--sig);border-radius:6px 6px 6px 0}
+nav{display:flex;gap:4px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:4px}
+nav button{border:0;background:transparent;color:var(--mute);font:600 15px inherit;font-family:inherit;padding:8px 14px;border-radius:9px;cursor:pointer}
+nav button.on{background:var(--ink);color:var(--bg)}
+button,input,select{font-family:inherit}
+:focus-visible{outline:3px solid var(--sig);outline-offset:2px}
+h1{font-size:clamp(32px,6vw,52px);line-height:1.05;letter-spacing:-.035em;font-weight:800;margin:0 0 8px}
+h2{font-size:18px;margin:0 0 12px}
+.sub,.muted{color:var(--mute)}.muted{font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;margin-bottom:16px}
+.row{display:flex;gap:8px}
+input,select{width:100%;min-width:0;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font-size:15px}
+.big{border:2px solid var(--ink);font-weight:600;font-size:18px;text-transform:uppercase;background:var(--card)}
+.btn{background:var(--ink);color:var(--bg);border:0;border-radius:10px;padding:10px 18px;font-weight:600;font-size:15px;cursor:pointer;white-space:nowrap}
+.btn.alt{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn.sm{padding:6px 10px;font-size:13px}.btn.del{color:var(--bad)}
+.form{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:12px;margin-bottom:16px}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px}
+.stat b{display:block;font-size:30px;letter-spacing:-.03em;line-height:1.1}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px;min-width:680px}
+th{text-align:left;color:var(--mute);font-weight:600;padding:8px;border-bottom:1px solid var(--line)}
+td{padding:8px;border-bottom:1px solid var(--line);vertical-align:middle}
+td select{padding:6px 8px;font-size:13px}
+.badge{display:inline-block;background:var(--sig);color:#10243a;font-weight:600;font-size:13px;padding:2px 10px;border-radius:99px}
+.badge.done{background:var(--ok);color:#fff}
+.hint{font-size:14px;color:var(--mute);margin:8px 0 0}
+.err{color:var(--bad);font-weight:600}
+ol{list-style:none;margin:0;padding:0}
+li{position:relative;padding:0 0 16px 28px}
+li::before{content:"";position:absolute;left:5px;top:6px;bottom:-6px;width:2px;background:var(--route)}
+li:last-child::before{display:none}
+li::after{content:"";position:absolute;left:0;top:5px;width:12px;height:12px;border-radius:50%;background:var(--card);border:2px solid var(--route)}
+li.on::after,li.on::before{background:var(--ok);border-color:var(--ok)}
+li.now::after{background:var(--sig);border-color:var(--sig);box-shadow:0 0 0 5px rgba(255,194,51,.3)}
+li b{display:block;font-weight:600}li.off{opacity:.55}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media(max-width:700px){.two{grid-template-columns:1fr}}
+dl{margin:0;display:grid;grid-template-columns:auto 1fr;gap:6px 16px}dt{color:var(--mute)}dd{margin:0;font-weight:600;text-align:right}
+.job{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.login{max-width:380px}.login .form{grid-template-columns:1fr}
+a{color:inherit}[hidden]{display:none!important}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <div class="logo"><i></i>Trackly</div>
+  <nav aria-label="Main">
+    <button data-v="track" class="on">Track parcel</button>
+    <button data-v="staff" id="staffBtn">Staff login</button>
+    <button id="logout" hidden>Sign out</button>
+  </nav>
+</header>
+
+<section id="v-track">
+  <h1>Where's my parcel?</h1>
+  <p class="sub">Local deliveries across Hyderabad. Enter your tracking ID or the phone number you ordered with.</p>
+  <div class="row"><input id="q" class="big" placeholder="TRK1001 or phone number" aria-label="Tracking ID or phone" maxlength="12"><button class="btn" id="go">Track</button></div>
+  <p class="hint">Demo IDs: TRK1001, TRK2002, TRK3003</p>
+  <p class="err" id="tErr" hidden></p>
+  <div id="result" style="margin-top:18px"></div>
+</section>
+
+<section id="v-login" hidden>
+  <div class="card login"><h2>Staff login</h2>
+    <div class="form">
+      <input id="lPhone" placeholder="Phone number" inputmode="numeric" maxlength="10" aria-label="Phone number">
+      <input id="lPass" type="password" placeholder="Password" aria-label="Password">
+      <button class="btn" id="lGo">Sign in</button>
+    </div>
+    <p class="err" id="lErr" hidden></p>
+    <p class="hint">Demo admin: 9999999999 / admin123<br>Demo delivery boy: 9848011111 / boy123</p>
+  </div>
+</section>
+
+<section id="v-boy" hidden>
+  <h1>My deliveries</h1>
+  <p class="sub" id="boyHi"></p>
+  <div class="card"><h2>Assigned parcels</h2><div id="jobs"></div><p class="err" id="jErr" hidden></p></div>
+</section>
+
+<section id="v-admin" hidden>
+  <h1>Admin</h1>
+  <div class="stats" id="stats"></div>
+  <div class="card"><h2>Add new order</h2>
+    <div class="form">
+      <input id="oName" placeholder="Customer name" aria-label="Customer name">
+      <input id="oPhone" placeholder="Phone (10 digits)" inputmode="numeric" maxlength="10" aria-label="Phone">
+      <input id="oAddr" placeholder="Delivery address (house no, street)" aria-label="Delivery address">
+      <input id="oLand" placeholder="Landmark (optional)" aria-label="Landmark">
+      <input id="oPin" placeholder="Pincode (6 digits)" inputmode="numeric" maxlength="6" aria-label="Pincode">
+      <select id="oArea" aria-label="Area"></select>
+      <input id="oPick" placeholder="Pickup address (shop or sender)" aria-label="Pickup address">
+      <input id="oItem" placeholder="Item" aria-label="Item">
+      <select id="oBoy" aria-label="Assign delivery boy"></select>
+      <button class="btn" id="addOrder">Add order</button>
+    </div><p class="err" id="oErr" hidden></p></div>
+  <div class="card"><h2>All orders</h2><div class="scroll"><table><thead><tr><th>ID</th><th>Customer</th><th>Delivery address</th><th>Delivery boy</th><th>Status</th><th></th></tr></thead><tbody id="otable"></tbody></table></div></div>
+  <div class="card"><h2>Delivery boys</h2>
+    <div class="form" style="margin-bottom:14px">
+      <input id="bName" placeholder="Name" aria-label="Name">
+      <input id="bPhone" placeholder="Phone (10 digits)" inputmode="numeric" maxlength="10" aria-label="Phone">
+      <select id="bArea" aria-label="Home area"></select>
+      <input id="bPass" type="password" placeholder="Login password (min 6)" aria-label="Password">
+      <button class="btn" id="addBoy">Add delivery boy</button>
+    </div><p class="err" id="bErr" hidden></p>
+    <div id="blist"></div></div>
+</section>
+</div>
+
+<script src="config.js"></script>
+<script>
+const S=["Order placed","Picked up","In transit","Out for delivery","Delivered"];
+const AREAS=["Banjara Hills","Madhapur","Kukatpally","Gachibowli","Secunderabad","Hitec City","Jubilee Hills","Ameerpet","Kondapur","LB Nagar"];
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmt=t=>t?new Date(t).toLocaleString("en-IN",{day:"numeric",month:"short",hour:"numeric",minute:"2-digit"}):"Pending";
+const full=o=>o.address+(o.landmark?", near "+o.landmark:"")+", "+o.area+" - "+o.pincode;
+const mapUrl=o=>"https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(full(o)+", Hyderabad");
+let token=sessionStorage.getItem("token"),user=JSON.parse(sessionStorage.getItem("user")||"null");
+
+async function api(path,opt={}){
+  const r=await fetch(API_BASE+"/api"+path,{method:opt.method||"GET",
+    headers:Object.assign({"Content-Type":"application/json"},token?{Authorization:"Bearer "+token}:{}),
+    body:opt.body?JSON.stringify(opt.body):undefined});
+  const d=await r.json().catch(()=>({}));
+  if(r.status===401&&token){signOut();throw new Error("Session expired. Please sign in again.")}
+  if(!r.ok)throw new Error(d.error||"Something went wrong");
+  return d}
+const showErr=(sel,m)=>{const e=$(sel);e.textContent=m||"";e.hidden=!m};
+const opts=(list,sel)=>list.map(x=>'<option value="'+esc(x.v)+'"'+(String(x.v)===String(sel)?" selected":"")+">"+esc(x.t)+"</option>").join("");
+
+/* ---- navigation ---- */
+function view(v){["track","login","boy","admin"].forEach(x=>$("#v-"+x).hidden=x!==v);
+  document.querySelectorAll("nav [data-v]").forEach(b=>b.classList.toggle("on",(b.dataset.v==="track")===(v==="track")))}
+function home(){
+  $("#logout").hidden=!user;
+  $("#staffBtn").textContent=user?(user.role==="admin"?"Admin":"My deliveries"):"Staff login";
+  $("#staffBtn").dataset.v="staff"}
+$("#staffBtn").onclick=()=>{if(!user)return view("login");user.role==="admin"?loadAdmin():loadBoy()};
+document.querySelector('nav [data-v="track"]').onclick=()=>view("track");
+function signOut(){token=null;user=null;sessionStorage.clear();home();view("login")}
+$("#logout").onclick=()=>{signOut();view("track")};
+
+/* ---- customer tracking ---- */
+async function track(){
+  showErr("#tErr");$("#result").innerHTML="";
+  try{
+    const o=await api("/track/"+encodeURIComponent($("#q").value.trim()));
+    const h={};o.history.forEach(x=>h[x.status]=x.at);const done=o.status===4;
+    const steps=S.map((s,i)=>'<li class="'+(i<o.status||(done&&i===4)?"on":i===o.status?"now":"off")+'"><b>'+s+'</b><span class="muted">'+fmt(h[i])+"</span></li>").reverse().join("");
+    $("#result").innerHTML='<div class="card"><span class="badge'+(done?" done":"")+'">'+(done?"Delivered":"On the way")+'</span><h2 style="font-size:28px;margin:8px 0 2px">'+S[o.status]+'</h2><div class="muted">'+esc(o.code)+" · "+esc(o.item)+'</div></div><div class="two"><div class="card"><h2>Delivery history</h2><ol>'+steps+'</ol></div><div class="card"><h2>Delivery details</h2><dl><dt>Customer</dt><dd>'+esc(o.customer_name)+"</dd><dt>Deliver to</dt><dd>"+esc(full(o))+"</dd>"+(o.pickup?"<dt>Pickup from</dt><dd>"+esc(o.pickup)+"</dd>":"")+"<dt>Delivery boy</dt><dd>"+(o.boy_name?esc(o.boy_name):"Not assigned yet")+"</dd>"+(o.boy_phone?'<dt>Contact</dt><dd><a href="tel:'+esc(o.boy_phone)+'">'+esc(o.boy_phone)+"</a></dd>":"")+'<dt>Map</dt><dd><a target="_blank" rel="noopener" href="'+esc(mapUrl(o))+'">Open in Maps</a></dd></dl></div></div>'
+  }catch(e){showErr("#tErr",e.message)}}
+$("#go").onclick=track;$("#q").addEventListener("keydown",e=>{if(e.key==="Enter")track()});
+
+/* ---- login ---- */
+$("#lGo").onclick=async()=>{
+  showErr("#lErr");
+  try{const d=await api("/login",{method:"POST",body:{phone:$("#lPhone").value,password:$("#lPass").value}});
+    token=d.token;user=d.user;sessionStorage.setItem("token",token);sessionStorage.setItem("user",JSON.stringify(user));
+    $("#lPass").value="";home();user.role==="admin"?loadAdmin():loadBoy()}
+  catch(e){showErr("#lErr",e.message)}};
+$("#lPass").addEventListener("keydown",e=>{if(e.key==="Enter")$("#lGo").click()});
+
+/* ---- delivery boy ---- */
+async function loadBoy(){
+  view("boy");$("#boyHi").textContent="Hello, "+user.name+". Update each parcel as you go.";showErr("#jErr");
+  try{const list=await api("/my/orders");
+    $("#jobs").innerHTML=list.length?list.map(o=>'<div class="job"><div><b>'+esc(o.code)+" · "+esc(o.item)+'</b><div class="muted">'+esc(o.customer_name)+" · "+esc(full(o))+' · <a href="tel:'+esc(o.customer_phone)+'">'+esc(o.customer_phone)+'</a> · <a target="_blank" rel="noopener" href="'+esc(mapUrl(o))+'">Map</a></div>'+(o.pickup?'<div class="muted">Pickup: '+esc(o.pickup)+"</div>":"")+'<div class="muted">Status: '+S[o.status]+"</div></div>"+(o.status<4?'<button class="btn sm" data-adv="'+esc(o.code)+'">Mark as '+S[o.status+1]+"</button>":'<span class="badge done">Delivered</span>')+"</div>").join(""):'<p class="muted">No parcels assigned to you yet.</p>'
+  }catch(e){showErr("#jErr",e.message)}}
+$("#jobs").onclick=async e=>{const c=e.target.dataset.adv;if(!c)return;
+  try{await api("/my/orders/"+c+"/advance",{method:"POST"});loadBoy()}catch(err){showErr("#jErr",err.message)}};
+
+/* ---- admin ---- */
+async function loadAdmin(){
+  view("admin");
+  if(!$("#oArea").options.length){$("#oArea").innerHTML=opts(AREAS.map(a=>({v:a,t:a})));$("#bArea").innerHTML=$("#oArea").innerHTML}
+  try{
+    const [st,orders,boys]=await Promise.all([api("/stats"),api("/orders"),api("/boys")]);
+    $("#stats").innerHTML=[["Total orders",st.total],["Active",st.active],["Delivered",st.delivered],["Delivery boys",st.boys]].map(s=>'<div class="stat"><b>'+s[1]+'</b><span class="muted">'+s[0]+"</span></div>").join("");
+    const bo=[{v:"",t:"Unassigned"}].concat(boys.map(b=>({v:b.id,t:b.name})));
+    const keep=$("#oBoy").value;$("#oBoy").innerHTML=opts(bo,keep);
+    $("#otable").innerHTML=orders.map(o=>"<tr><td><b>"+esc(o.code)+'</b></td><td>'+esc(o.customer_name)+'<div class="muted">'+esc(o.customer_phone)+"</div></td><td>"+esc(full(o))+(o.pickup?'<div class="muted">Pickup: '+esc(o.pickup)+"</div>":"")+'</td><td><select data-assign="'+esc(o.code)+'" aria-label="Assign">'+opts(bo,o.boy_id||"")+'</select></td><td><select data-stage="'+esc(o.code)+'" aria-label="Status">'+opts(S.map((s,i)=>({v:i,t:s})),o.status)+'</select></td><td><button class="btn alt sm del" data-del="'+esc(o.code)+'">Delete</button></td></tr>').join("")||'<tr><td colspan="6" class="muted">No orders yet.</td></tr>';
+    $("#blist").innerHTML=boys.map(b=>'<div class="job"><div><b>'+esc(b.name)+'</b><div class="muted">'+esc(b.phone)+" · "+esc(b.area||"")+" · "+b.active+' active</div></div><button class="btn alt sm del" data-delb="'+b.id+'">Remove</button></div>').join("")||'<p class="muted">No delivery boys yet.</p>'
+  }catch(e){showErr("#oErr",e.message)}}
+const field=id=>$(id).value;
+$("#addOrder").onclick=async()=>{showErr("#oErr");
+  try{await api("/orders",{method:"POST",body:{customer_name:field("#oName"),customer_phone:field("#oPhone"),address:field("#oAddr"),landmark:field("#oLand"),pincode:field("#oPin"),pickup:field("#oPick"),area:field("#oArea"),item:field("#oItem"),boy_id:field("#oBoy")}});
+    ["#oName","#oPhone","#oAddr","#oLand","#oPin","#oPick","#oItem"].forEach(s=>$(s).value="");loadAdmin()}
+  catch(e){showErr("#oErr",e.message)}};
+$("#addBoy").onclick=async()=>{showErr("#bErr");
+  try{await api("/boys",{method:"POST",body:{name:field("#bName"),phone:field("#bPhone"),area:field("#bArea"),password:field("#bPass")}});
+    ["#bName","#bPhone","#bPass"].forEach(s=>$(s).value="");loadAdmin()}
+  catch(e){showErr("#bErr",e.message)}};
+$("#v-admin").addEventListener("change",async e=>{const t=e.target;
+  try{if(t.dataset.assign)await api("/orders/"+t.dataset.assign,{method:"PATCH",body:{boy_id:t.value}});
+    else if(t.dataset.stage)await api("/orders/"+t.dataset.stage,{method:"PATCH",body:{status:Number(t.value)}});
+    else return;loadAdmin()}catch(err){showErr("#oErr",err.message)}});
+$("#v-admin").addEventListener("click",async e=>{const t=e.target;
+  try{if(t.dataset.del&&confirm("Delete order "+t.dataset.del+"?"))await api("/orders/"+t.dataset.del,{method:"DELETE"});
+    else if(t.dataset.delb&&confirm("Remove this delivery boy? Their parcels become unassigned."))await api("/boys/"+t.dataset.delb,{method:"DELETE"});
+    else return;loadAdmin()}catch(err){showErr("#oErr",err.message)}});
+
+home();view("track");
+</script>
+</body>
+</html>

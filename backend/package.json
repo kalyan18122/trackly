@@ -1,0 +1,17 @@
+{
+  "name": "trackly-backend",
+  "version": "1.0.0",
+  "description": "Trackly REST API (Node.js, Express, built-in SQLite)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=22.5"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
